@@ -33,7 +33,7 @@ class Context
 
   run : (callbacks)->
     if (@running)
-      return @_error('Run called twice')
+      return @_error('[cntxt] Run called twice')
 
     @state = STATES.running
 
@@ -41,7 +41,7 @@ class Context
       callbacks = [callbacks]
 
     if (callbacks.length is 0)
-      return @_error('Run passed no callbacks')
+      return @_error('[cntxt] Run passed no callbacks')
 
     @callbacks = callbacks
     @index     = 0
@@ -93,7 +93,7 @@ class Context
     if Type(error, Error)
       error
     else
-      new Error("[Cntxt] #{error}")
+      new Error(error)
 
   _finish : (state)->
     if state
@@ -109,7 +109,7 @@ class Context
 
     for k,v of data
       if @hasKey(k) and !@overwrite
-        return @_error("Key exists #{k}")
+        return @_error("[cntxt] Key exists #{k}")
       @data[k] = v
 
 Object.keys(STATES).forEach((state)->
