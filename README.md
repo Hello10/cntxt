@@ -124,4 +124,4 @@ Context.run([
 });
 ```
 
-Check out [this test](https://github.com/stephenhandley/cntxt/blob/master/tests/ContextTest.coffee) for more usage examples.
+[This test](https://github.com/stephenhandley/cntxt/blob/master/tests/ContextTest.coffee) also has some more usage examples.
