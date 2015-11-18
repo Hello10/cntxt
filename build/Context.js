@@ -17,12 +17,12 @@
       this.data = {};
       this._addData(args.data);
       this.overwrite = !args.overwrite;
-      this._onDone = null;
+      this.state = STATES.ready;
       this.finished = false;
+      this._onDone = null;
+      this._error = null;
       this.callbacks = null;
       this.index = null;
-      this.error = null;
-      this.state = STATES.ready;
     }
 
     Context.run = function(callbacks) {
@@ -34,14 +34,14 @@
 
     Context.prototype.run = function(callbacks) {
       if (this.running) {
-        return this._error('[cntxt] Run called twice');
+        return this.error('[cntxt] Run called twice');
       }
       this.state = STATES.running;
       if (!Type(callbacks, Array)) {
         callbacks = [callbacks];
       }
       if (callbacks.length === 0) {
-        return this._error('[cntxt] Run passed no callbacks');
+        return this.error('[cntxt] Run passed no callbacks');
       }
       this.callbacks = callbacks;
       this.index = 0;
@@ -49,22 +49,40 @@
     };
 
     Context.prototype.next = function(data) {
-      var callback, error;
+      var callback, error, nextWrap, type;
       this._addData(data);
       if (this.index >= this.callbacks.length) {
         return this.succeed();
       }
       callback = this.callbacks[this.index];
       this.index++;
+      nextWrap = (function(_this) {
+        return function(error, data) {
+          if (error) {
+            return _this.error(error);
+          } else {
+            return _this.next(data);
+          }
+        };
+      })(this);
       try {
-        if (Type(callback, Object)) {
-          return this.next(callback);
-        } else {
-          return callback(this);
+        type = Type(callback);
+        switch (type) {
+          case Object:
+            return this.next(callback);
+          case Function:
+            if (callback.length === 2) {
+              return callback(this.data, nextWrap);
+            } else {
+              return callback(this);
+            }
+            break;
+          default:
+            return this.error("Invalid callback type: " + type);
         }
       } catch (_error) {
         error = _error;
-        return this._error(error);
+        return this.error(error);
       }
     };
 
@@ -91,8 +109,8 @@
       return this._finish(STATES.succeeded);
     };
 
-    Context.prototype._error = function(error) {
-      this.error = this._makeError(error);
+    Context.prototype.error = function(error) {
+      this._error = this._makeError(error);
       return this._finish(STATES.errored);
     };
 
@@ -108,9 +126,14 @@
       if (state) {
         this.state = state;
       }
+      this.error = this.errored ? this._error : null;
       if (Type(this._onDone, Function)) {
         this.finished = true;
-        return this._onDone(this);
+        if (this._onDone.length === 2) {
+          return this._onDone(this.error, this.data);
+        } else {
+          return this._onDone(this);
+        }
       }
     };
 
@@ -122,7 +145,7 @@
       for (k in data) {
         v = data[k];
         if (this.hasKey(k) && !this.overwrite) {
-          return this._error("[cntxt] Key exists " + k);
+          return this.error("[cntxt] Key exists " + k);
         }
         this.data[k] = v;
       }

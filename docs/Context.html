@@ -49,8 +49,10 @@ STATES = {
 
     <span class="hljs-property">@overwrite</span> = !args.overwrite
 
+    <span class="hljs-property">@state</span>    = STATES.ready
+    <span class="hljs-property">@finished</span> = <span class="hljs-literal">false</span>
     <span class="hljs-property">@_onDone</span>  = <span class="hljs-literal">null</span>
-    <span class="hljs-property">@finished</span> = <span class="hljs-literal">false</span></pre></div></div>
+    <span class="hljs-property">@_error</span>   = <span class="hljs-literal">null</span></pre></div></div>
             
         </li>
         
@@ -61,14 +63,12 @@ STATES = {
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-2">&#182;</a>
               </div>
-              <p>updated by .run</p>
+              <p>set by ::run</p>
 
             </div>
             
             <div class="content"><div class='highlight'><pre>    <span class="hljs-property">@callbacks</span> = <span class="hljs-literal">null</span>
     <span class="hljs-property">@index</span>     = <span class="hljs-literal">null</span>
-    <span class="hljs-property">@error</span>     = <span class="hljs-literal">null</span>
-    <span class="hljs-property">@state</span>     = STATES.ready
 
   <span class="hljs-property">@run</span> : <span class="hljs-function"><span class="hljs-params">(callbacks)</span>-&gt;</span>
     context = <span class="hljs-keyword">new</span> Context()
@@ -77,7 +77,7 @@ STATES = {
 
   run : <span class="hljs-function"><span class="hljs-params">(callbacks)</span>-&gt;</span>
     <span class="hljs-keyword">if</span> (<span class="hljs-property">@running</span>)
-      <span class="hljs-keyword">return</span> <span class="hljs-property">@_error</span>(<span class="hljs-string">'[cntxt] Run called twice'</span>)
+      <span class="hljs-keyword">return</span> <span class="hljs-property">@error</span>(<span class="hljs-string">'[cntxt] Run called twice'</span>)
 
     <span class="hljs-property">@state</span> = STATES.running
 
@@ -85,7 +85,7 @@ STATES = {
       callbacks = [callbacks]
 
     <span class="hljs-keyword">if</span> (callbacks.length <span class="hljs-keyword">is</span> <span class="hljs-number">0</span>)
-      <span class="hljs-keyword">return</span> <span class="hljs-property">@_error</span>(<span class="hljs-string">'[cntxt] Run passed no callbacks'</span>)
+      <span class="hljs-keyword">return</span> <span class="hljs-property">@error</span>(<span class="hljs-string">'[cntxt] Run passed no callbacks'</span>)
 
     <span class="hljs-property">@callbacks</span> = callbacks
     <span class="hljs-property">@index</span>     = <span class="hljs-number">0</span>
@@ -113,14 +113,71 @@ STATES = {
             
             <div class="content"><div class='highlight'><pre>    callback = <span class="hljs-property">@callbacks</span>[<span class="hljs-property">@index</span>]
     <span class="hljs-property">@index</span>++
+<span class="hljs-function">
+    <span class="hljs-title">nextWrap</span> = <span class="hljs-params">(error, data)</span>=&gt;</span>
+      <span class="hljs-keyword">if</span> error
+        <span class="hljs-property">@error</span>(error)
+      <span class="hljs-keyword">else</span>
+        <span class="hljs-property">@next</span>(data)
 
     <span class="hljs-keyword">try</span>
-      <span class="hljs-keyword">if</span> Type(callback, Object)
-        <span class="hljs-property">@next</span>(callback)
-      <span class="hljs-keyword">else</span>
-        callback(@)
+      type = Type(callback)
+
+      <span class="hljs-keyword">switch</span> type
+        <span class="hljs-keyword">when</span> Object</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-4">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-4">&#182;</a>
+              </div>
+              <p>callback is data, not function</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>          <span class="hljs-property">@next</span>(callback)
+        <span class="hljs-keyword">when</span> Function
+          <span class="hljs-keyword">if</span> (callback.length <span class="hljs-keyword">is</span> <span class="hljs-number">2</span>)</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-5">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-5">&#182;</a>
+              </div>
+              <p>callback is (data, next)</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>            callback(<span class="hljs-property">@data</span>, nextWrap)
+          <span class="hljs-keyword">else</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-6">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-6">&#182;</a>
+              </div>
+              <p>callback is (context)</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>            callback(@)
+        <span class="hljs-keyword">else</span>
+          <span class="hljs-property">@error</span>(<span class="hljs-string">"Invalid callback type: <span class="hljs-subst">#{type}</span>"</span>)
+
     <span class="hljs-keyword">catch</span> error
-      <span class="hljs-property">@_error</span>(error)
+      <span class="hljs-property">@error</span>(error)
 
   done : <span class="hljs-function"><span class="hljs-params">(onDone)</span>-&gt;</span>
     <span class="hljs-property">@_onDone</span> = onDone
@@ -141,8 +198,8 @@ STATES = {
     <span class="hljs-property">@_addData</span>(data)
     <span class="hljs-property">@_finish</span>(STATES.succeeded)
 
-  _error : <span class="hljs-function"><span class="hljs-params">(error)</span>-&gt;</span>
-    <span class="hljs-property">@error</span> = <span class="hljs-property">@_makeError</span>(error)
+  error : <span class="hljs-function"><span class="hljs-params">(error)</span>-&gt;</span>
+    <span class="hljs-property">@_error</span> = <span class="hljs-property">@_makeError</span>(error)
     <span class="hljs-property">@_finish</span>(STATES.errored)
 
   _makeError : <span class="hljs-function"><span class="hljs-params">(error)</span>-&gt;</span>
@@ -153,11 +210,60 @@ STATES = {
 
   _finish : <span class="hljs-function"><span class="hljs-params">(state)</span>-&gt;</span>
     <span class="hljs-keyword">if</span> state
-      <span class="hljs-property">@state</span> = state
+      <span class="hljs-property">@state</span> = state</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-7">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-7">&#182;</a>
+              </div>
+              <p>we overwrite this the error method with actual error or null</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-property">@error</span> = <span class="hljs-keyword">if</span> <span class="hljs-property">@errored</span>
+      <span class="hljs-property">@_error</span>
+    <span class="hljs-keyword">else</span>
+      <span class="hljs-literal">null</span>
 
     <span class="hljs-keyword">if</span> Type(<span class="hljs-property">@_onDone</span>, Function)
       <span class="hljs-property">@finished</span> = <span class="hljs-literal">true</span>
-      <span class="hljs-property">@_onDone</span>(@)
+      <span class="hljs-keyword">if</span> (<span class="hljs-property">@_onDone</span>.length <span class="hljs-keyword">is</span> <span class="hljs-number">2</span>)</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-8">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-8">&#182;</a>
+              </div>
+              <p>@_onDone is (error, data)</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        <span class="hljs-property">@_onDone</span>(<span class="hljs-property">@error</span>, <span class="hljs-property">@data</span>)
+      <span class="hljs-keyword">else</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-9">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-9">&#182;</a>
+              </div>
+              <p>@_onDone is (context)</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        <span class="hljs-property">@_onDone</span>(@)
 
   _addData : <span class="hljs-function"><span class="hljs-params">(data)</span>-&gt;</span>
     <span class="hljs-keyword">unless</span> data
@@ -165,7 +271,7 @@ STATES = {
 
     <span class="hljs-keyword">for</span> k,v <span class="hljs-keyword">of</span> data
       <span class="hljs-keyword">if</span> <span class="hljs-property">@hasKey</span>(k) <span class="hljs-keyword">and</span> !<span class="hljs-property">@overwrite</span>
-        <span class="hljs-keyword">return</span> <span class="hljs-property">@_error</span>(<span class="hljs-string">"[cntxt] Key exists <span class="hljs-subst">#{k}</span>"</span>)
+        <span class="hljs-keyword">return</span> <span class="hljs-property">@error</span>(<span class="hljs-string">"[cntxt] Key exists <span class="hljs-subst">#{k}</span>"</span>)
       <span class="hljs-property">@data</span>[k] = v
 
 Object.keys(STATES).forEach(<span class="hljs-function"><span class="hljs-params">(state)</span>-&gt;</span>

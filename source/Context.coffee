@@ -17,14 +17,14 @@ class Context
 
     @overwrite = !args.overwrite
 
-    @_onDone  = null
+    @state    = STATES.ready
     @finished = false
+    @_onDone  = null
+    @_error   = null
 
-    # updated by .run
+    # set by ::run
     @callbacks = null
     @index     = null
-    @error     = null
-    @state     = STATES.ready
 
   @run : (callbacks)->
     context = new Context()
@@ -33,7 +33,7 @@ class Context
 
   run : (callbacks)->
     if (@running)
-      return @_error('[cntxt] Run called twice')
+      return @error('[cntxt] Run called twice')
 
     @state = STATES.running
 
@@ -41,7 +41,7 @@ class Context
       callbacks = [callbacks]
 
     if (callbacks.length is 0)
-      return @_error('[cntxt] Run passed no callbacks')
+      return @error('[cntxt] Run passed no callbacks')
 
     @callbacks = callbacks
     @index     = 0
@@ -58,13 +58,31 @@ class Context
     callback = @callbacks[@index]
     @index++
 
-    try
-      if Type(callback, Object)
-        @next(callback)
+    nextWrap = (error, data)=>
+      if error
+        @error(error)
       else
-        callback(@)
+        @next(data)
+
+    try
+      type = Type(callback)
+
+      switch type
+        when Object
+          # callback is data, not function
+          @next(callback)
+        when Function
+          if (callback.length is 2)
+            # callback is (data, next)
+            callback(@data, nextWrap)
+          else
+            # callback is (context)
+            callback(@)
+        else
+          @error("Invalid callback type: #{type}")
+
     catch error
-      @_error(error)
+      @error(error)
 
   done : (onDone)->
     @_onDone = onDone
@@ -85,8 +103,8 @@ class Context
     @_addData(data)
     @_finish(STATES.succeeded)
 
-  _error : (error)->
-    @error = @_makeError(error)
+  error : (error)->
+    @_error = @_makeError(error)
     @_finish(STATES.errored)
 
   _makeError : (error)->
@@ -99,9 +117,20 @@ class Context
     if state
       @state = state
 
+    # we overwrite this the error method with actual error or null
+    @error = if @errored
+      @_error
+    else
+      null
+
     if Type(@_onDone, Function)
       @finished = true
-      @_onDone(@)
+      if (@_onDone.length is 2)
+        # @_onDone is (error, data)
+        @_onDone(@error, @data)
+      else
+        # @_onDone is (context)
+        @_onDone(@)
 
   _addData : (data)->
     unless data
@@ -109,7 +138,7 @@ class Context
 
     for k,v of data
       if @hasKey(k) and !@overwrite
-        return @_error("[cntxt] Key exists #{k}")
+        return @error("[cntxt] Key exists #{k}")
       @data[k] = v
 
 Object.keys(STATES).forEach((state)->
