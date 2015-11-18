@@ -1,5 +1,5 @@
 Assert = require('assert')
-Context = require('../build/Context')
+Context = require('../')
 
 module.exports = {
   'Context' : {
