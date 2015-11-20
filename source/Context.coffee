@@ -48,6 +48,18 @@ class Context
 
     @next()
 
+  wrap : (key)->
+    (error, data)=>
+      if error
+        @error(error)
+      else
+        if (key)
+          _data = {}
+          _data[key] = data
+          data = _data
+
+        @next(data)
+
   next : (data)->
     @_addData(data)
 
@@ -57,12 +69,6 @@ class Context
     # call next callback
     callback = @callbacks[@index]
     @index++
-
-    nextWrap = (error, data)=>
-      if error
-        @error(error)
-      else
-        @next(data)
 
     try
       type = Type(callback)
@@ -74,7 +80,7 @@ class Context
         when Function
           if (callback.length is 2)
             # callback is (data, next)
-            callback(@data, nextWrap)
+            callback(@data, @wrap())
           else
             # callback is (context)
             callback(@)

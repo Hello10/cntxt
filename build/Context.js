@@ -48,23 +48,32 @@
       return this.next();
     };
 
+    Context.prototype.wrap = function(key) {
+      return (function(_this) {
+        return function(error, data) {
+          var _data;
+          if (error) {
+            return _this.error(error);
+          } else {
+            if (key) {
+              _data = {};
+              _data[key] = data;
+              data = _data;
+            }
+            return _this.next(data);
+          }
+        };
+      })(this);
+    };
+
     Context.prototype.next = function(data) {
-      var callback, error, nextWrap, type;
+      var callback, error, type;
       this._addData(data);
       if (this.index >= this.callbacks.length) {
         return this.succeed();
       }
       callback = this.callbacks[this.index];
       this.index++;
-      nextWrap = (function(_this) {
-        return function(error, data) {
-          if (error) {
-            return _this.error(error);
-          } else {
-            return _this.next(data);
-          }
-        };
-      })(this);
       try {
         type = Type(callback);
         switch (type) {
@@ -72,7 +81,7 @@
             return this.next(callback);
           case Function:
             if (callback.length === 2) {
-              return callback(this.data, nextWrap);
+              return callback(this.data, this.wrap());
             } else {
               return callback(this);
             }

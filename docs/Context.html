@@ -92,6 +92,18 @@ STATES = {
 
     <span class="hljs-property">@next</span>()
 
+  wrap : <span class="hljs-function"><span class="hljs-params">(key)</span>-&gt;</span>
+    (error, data)=&gt;
+      <span class="hljs-keyword">if</span> error
+        <span class="hljs-property">@error</span>(error)
+      <span class="hljs-keyword">else</span>
+        <span class="hljs-keyword">if</span> (key)
+          _data = {}
+          _data[key] = data
+          data = _data
+
+        <span class="hljs-property">@next</span>(data)
+
   next : <span class="hljs-function"><span class="hljs-params">(data)</span>-&gt;</span>
     <span class="hljs-property">@_addData</span>(data)
 
@@ -113,12 +125,6 @@ STATES = {
             
             <div class="content"><div class='highlight'><pre>    callback = <span class="hljs-property">@callbacks</span>[<span class="hljs-property">@index</span>]
     <span class="hljs-property">@index</span>++
-<span class="hljs-function">
-    <span class="hljs-title">nextWrap</span> = <span class="hljs-params">(error, data)</span>=&gt;</span>
-      <span class="hljs-keyword">if</span> error
-        <span class="hljs-property">@error</span>(error)
-      <span class="hljs-keyword">else</span>
-        <span class="hljs-property">@next</span>(data)
 
     <span class="hljs-keyword">try</span>
       type = Type(callback)
@@ -156,7 +162,7 @@ STATES = {
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>            callback(<span class="hljs-property">@data</span>, nextWrap)
+            <div class="content"><div class='highlight'><pre>            callback(<span class="hljs-property">@data</span>, <span class="hljs-property">@wrap</span>())
           <span class="hljs-keyword">else</span></pre></div></div>
             
         </li>

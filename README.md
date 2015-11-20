@@ -12,7 +12,7 @@ cntxt provides a context for executing and accumulating data through a function 
 
 ## Latest Version
 
-2.0.1
+2.1.0
 
 ## Installation
 ```
@@ -69,6 +69,17 @@ function getOpponents(context) {
   context.next({ opponents : opponents });
 }
 
+function taunt(context) {
+  messages = context.data.opponents.map(function (user_id) {
+    return {
+        recipient : user_id
+        content   : "Heehaw!"
+  });
+  // context.wrap is a function with (error, data) args
+  // which calls error or next depending on those values
+  Message.create(messages, context.wrap)
+}
+
 var params = { user_id : 'derrrrp' };
 
 // .run pipelines array of callbacks and calls .done when
@@ -78,7 +89,8 @@ Context.run([
   params,
   findUser,
   findUserGames,
-  getOpponents
+  getOpponents,
+  taunt
 ]).done(function(context) {
   // when this is called, one and only one of the following
   // will be true: [.succeeded, .errored, .failed], depending

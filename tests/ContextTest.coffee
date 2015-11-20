@@ -146,6 +146,30 @@ module.exports = {
     }
 
     'instance methods' : {
+      '.wrap should wrap (error, data) callbacks' : (done)->
+        yarp = (label, callback)->
+          result = {}
+          result[label] = 'ABCD'
+          callback(null, result)
+
+        narp = (callback)->
+          callback(new Error('narp'), null)
+
+        wow = (context)->
+          yarp('EFGH', context.wrap('honk'))
+
+        how = (context)->
+          narp(context.wrap('nooooo'))
+
+        Context.run([
+          wow,
+          how
+        ]).done((context)->
+          Assert(context.errored)
+          Assert.equal(context.data.honk.EFGH, 'ABCD')
+          done()
+        )
+
       '.succeed should short circuit pipeline' : (done)->
         foo = (context)->
           context.next(
