@@ -32,6 +32,42 @@ module.exports = {
           done()
         )
 
+      'allow promises in pipeline': {
+        'to succeed': (done)->
+          p1 = new Promise((resolve, reject)->
+            resolve(
+              x: 10
+            )
+          )
+
+          console.log(p1)
+
+          p2 = new Promise((resolve, reject)->
+            console.log(p2)
+            resolve(
+              y: this.context.data.x * 10
+            )
+          )
+
+          console.log(p2)
+
+          Context.run([
+            p1,
+            p2
+          ]).done((context)->
+            console.log('done!')
+            Assert.equal(context.data.y, 100)
+            done()
+          )
+
+        'to error': (done)->
+          Context.run([
+
+          ]).done((context)->
+            done()
+          )
+      }
+
       'allow objects in pipeline to augment data' : (done)->
           params = {
             what : 10

@@ -68,6 +68,7 @@
 
     Context.prototype.next = function(data) {
       var callback, error, type;
+      console.log('next!!!');
       this._addData(data);
       if (this.index >= this.callbacks.length) {
         return this.succeed();
@@ -75,11 +76,29 @@
       callback = this.callbacks[this.index];
       this.index++;
       try {
+        if (Type(callback.then, Function)) {
+          console.log("PROMISE!");
+          callback.context = this;
+          return callback.then((function(_this) {
+            return function(data) {
+              console.log('next');
+              return _this.next(data);
+            };
+          })(this))["catch"]((function(_this) {
+            return function(error) {
+              console.log('error');
+              console.log(error);
+              return _this.error(error);
+            };
+          })(this));
+        }
         type = Type(callback);
+        console.log('type is', type);
         switch (type) {
           case Object:
             return this.next(callback);
           case Function:
+            console.log('FUNCIO');
             if (callback.length === 2) {
               return callback(this.data, this.wrap());
             } else {

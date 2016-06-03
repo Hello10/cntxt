@@ -105,6 +105,7 @@ STATES = {
         <span class="hljs-property">@next</span>(data)
 
   next : <span class="hljs-function"><span class="hljs-params">(data)</span>-&gt;</span>
+    <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'next!!!'</span>)
     <span class="hljs-property">@_addData</span>(data)
 
     <span class="hljs-keyword">if</span> (<span class="hljs-property">@index</span> &gt;= <span class="hljs-property">@callbacks</span>.length)
@@ -127,8 +128,21 @@ STATES = {
     <span class="hljs-property">@index</span>++
 
     <span class="hljs-keyword">try</span>
+      <span class="hljs-keyword">if</span> Type(callback.<span class="hljs-keyword">then</span>, Function)
+        <span class="hljs-built_in">console</span>.log(<span class="hljs-string">"PROMISE!"</span>)
+        callback.context = @
+        <span class="hljs-keyword">return</span> callback.<span class="hljs-keyword">then</span>(<span class="hljs-function"><span class="hljs-params">(data)</span>=&gt;</span>
+          <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'next'</span>)
+          <span class="hljs-property">@next</span>(data)
+        ).<span class="hljs-keyword">catch</span>(<span class="hljs-function"><span class="hljs-params">(error)</span>=&gt;</span>
+          <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'error'</span>)
+          <span class="hljs-built_in">console</span>.log(error)
+          <span class="hljs-property">@error</span>(error)
+        )
+
       type = Type(callback)
 
+      <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'type is'</span>, type)
       <span class="hljs-keyword">switch</span> type
         <span class="hljs-keyword">when</span> Object</pre></div></div>
             
@@ -147,6 +161,7 @@ STATES = {
             
             <div class="content"><div class='highlight'><pre>          <span class="hljs-property">@next</span>(callback)
         <span class="hljs-keyword">when</span> Function
+          <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'FUNCIO'</span>)
           <span class="hljs-keyword">if</span> (callback.length <span class="hljs-keyword">is</span> <span class="hljs-number">2</span>)</pre></div></div>
             
         </li>

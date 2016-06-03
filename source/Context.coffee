@@ -61,6 +61,7 @@ class Context
         @next(data)
 
   next : (data)->
+    console.log('next!!!')
     @_addData(data)
 
     if (@index >= @callbacks.length)
@@ -71,13 +72,27 @@ class Context
     @index++
 
     try
+      if Type(callback.then, Function)
+        console.log("PROMISE!")
+        callback.context = @
+        return callback.then((data)=>
+          console.log('next')
+          @next(data)
+        ).catch((error)=>
+          console.log('error')
+          console.log(error)
+          @error(error)
+        )
+
       type = Type(callback)
 
+      console.log('type is', type)
       switch type
         when Object
           # callback is data, not function
           @next(callback)
         when Function
+          console.log('FUNCIO')
           if (callback.length is 2)
             # callback is (data, next)
             callback(@data, @wrap())
