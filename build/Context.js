@@ -34,14 +34,14 @@
 
     Context.prototype.run = function(callbacks) {
       if (this.running) {
-        return this.error('[cntxt] Run called twice');
+        return this["throw"]('[cntxt] Run called twice');
       }
       this.state = STATES.running;
       if (!Type(callbacks, Array)) {
         callbacks = [callbacks];
       }
       if (callbacks.length === 0) {
-        return this.error('[cntxt] Run passed no callbacks');
+        return this["throw"]('[cntxt] Run passed no callbacks');
       }
       this.callbacks = callbacks;
       this.index = 0;
@@ -53,7 +53,7 @@
         return function(error, data) {
           var _data;
           if (error) {
-            return _this.error(error);
+            return _this["throw"](error);
           } else {
             if (key) {
               _data = {};
@@ -91,7 +91,7 @@
         }
       } catch (_error) {
         error = _error;
-        return this.error(error);
+        return this["throw"](error);
       }
     };
 
@@ -118,9 +118,11 @@
       return this._finish(STATES.succeeded);
     };
 
-    Context.prototype.error = function(error) {
-      this._error = this._makeError(error);
-      return this._finish(STATES.errored);
+    Context.prototype["throw"] = function(error) {
+      if (!this.errored) {
+        this._error = this._makeError(error);
+        return this._finish(STATES.errored);
+      }
     };
 
     Context.prototype._makeError = function(error) {
@@ -154,7 +156,7 @@
       for (k in data) {
         v = data[k];
         if (this.hasKey(k) && !this.overwrite) {
-          return this.error("[cntxt] Key exists " + k);
+          return this["throw"]("[cntxt] Key exists " + k);
         }
         this.data[k] = v;
       }

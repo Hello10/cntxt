@@ -198,7 +198,7 @@ module.exports = {
 
       '.error should set error and short circuit pipeline' : (done)->
         err = (context)->
-          context.error('OMG')
+          context.throw('OMG')
 
         Context.run([
           err

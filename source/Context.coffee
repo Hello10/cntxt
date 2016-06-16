@@ -33,7 +33,7 @@ class Context
 
   run : (callbacks)->
     if (@running)
-      return @error('[cntxt] Run called twice')
+      return @throw('[cntxt] Run called twice')
 
     @state = STATES.running
 
@@ -41,7 +41,7 @@ class Context
       callbacks = [callbacks]
 
     if (callbacks.length is 0)
-      return @error('[cntxt] Run passed no callbacks')
+      return @throw('[cntxt] Run passed no callbacks')
 
     @callbacks = callbacks
     @index     = 0
@@ -51,7 +51,7 @@ class Context
   wrap : (key)->
     (error, data)=>
       if error
-        @error(error)
+        @throw(error)
       else
         if (key)
           _data = {}
@@ -88,7 +88,7 @@ class Context
           @error("Invalid callback type: #{type}")
 
     catch error
-      @error(error)
+      @throw(error)
 
   done : (onDone)->
     @_onDone = onDone
@@ -109,9 +109,11 @@ class Context
     @_addData(data)
     @_finish(STATES.succeeded)
 
-  error : (error)->
-    @_error = @_makeError(error)
-    @_finish(STATES.errored)
+  throw : (error)->
+    # for now just keep one error. TODO: something better
+    unless this.errored
+      @_error = @_makeError(error)
+      @_finish(STATES.errored)
 
   _makeError : (error)->
     if Type(error, Error)
@@ -123,7 +125,6 @@ class Context
     if state
       @state = state
 
-    # we overwrite this the error method with actual error or null
     @error = if @errored
       @_error
     else
@@ -144,7 +145,7 @@ class Context
 
     for k,v of data
       if @hasKey(k) and !@overwrite
-        return @error("[cntxt] Key exists #{k}")
+        return @throw("[cntxt] Key exists #{k}")
       @data[k] = v
 
 Object.keys(STATES).forEach((state)->
