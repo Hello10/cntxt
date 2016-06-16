@@ -1,6 +1,6 @@
 {
   "name": "cntxt",
-  "version": "2.1.0",
+  "version": "3.0.0",
   "description": "Pipeline context",
   "license": "substanceware",
   "main": "index.js",

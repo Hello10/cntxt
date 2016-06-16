@@ -12,7 +12,7 @@ cntxt provides a context for executing and accumulating data through a function 
 
 ## Latest Version
 
-2.1.0
+3.0.0
 
 ## Installation
 ```
@@ -29,8 +29,8 @@ function findUser(context) {
   var user_id = context.data.user_id;
   User.find({ id : user_id }, function(error, user) {
     if (error) {
-      // .error is used for unexpected errors
-      return context.error(error);
+      // .throw is used for unexpected errors
+      return context.throw(error);
     }
     if (!user) {
       // .fail is used for expected errors that are
@@ -49,7 +49,7 @@ function findUserGames(context) {
 
   Game.findAll({ user_id : user_id }, function(error, games) {
     if (error) {
-      return context.error(error);
+      return context.throw(error);
     }
     context.next({ games : games });
   });
@@ -83,7 +83,7 @@ function taunt(context) {
 var params = { user_id : 'derrrrp' };
 
 // .run pipelines array of callbacks and calls .done when
-// A) any callback calls one of [.fail, .error, .succeed]
+// A) any callback calls one of [.fail, .throw, .succeed]
 // B) last callback calls .next (equivalent to .succeed)
 Context.run([
   params,
