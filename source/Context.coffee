@@ -8,6 +8,8 @@ STATES = {
   succeeded : 'succeeded'
 }
 
+Run = require('./Run')
+
 class Context
   constructor : (args)->
     args ||= {}
@@ -21,10 +23,6 @@ class Context
     @finished = false
     @_onDone  = null
     @_error   = null
-
-    # set by ::run
-    @callbacks = null
-    @index     = null
 
   @run : (callbacks)->
     context = new Context()
