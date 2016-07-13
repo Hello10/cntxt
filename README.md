@@ -99,7 +99,7 @@ Context.run([
   Assert.equal(context.succeeded(), true);
 
   // context.error will hold error if .errored=true, else null
-  Assert.equal(context.error(), null);
+  Assert.equal(context.error, null);
 
   // accumulated data is available in context.data
   Assert.deepEqual(context(), {
