@@ -218,7 +218,7 @@ var Context = function (args) {
   return context;
 }
 
-Context.run = (callbacks)=> {
+Context.run = function (callbacks) {
   context = Context();
   context.run(callbacks);
   return context;
