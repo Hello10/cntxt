@@ -12,7 +12,7 @@ cntxt provides a context for executing and accumulating data through a function 
 
 ## Latest Version
 
-4.0.0
+4.0.1
 
 ## Installation
 ```
@@ -136,4 +136,4 @@ Context.run([
 });
 ```
 
-[This test](https://github.com/stephenhandley/cntxt/blob/master/tests/ContextTest.coffee) also has some more usage examples.
+[This test](https://github.com/stephenhandley/cntxt/blob/master/tests/ContextTest.js) also has some more usage examples.

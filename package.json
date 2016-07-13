@@ -1,11 +1,11 @@
 {
   "name": "cntxt",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "description": "Pipeline context",
   "license": "substanceware",
   "main": "index.js",
   "scripts": {
-    "test": "./node_modules/.bin/mocha --recursive --no-timeouts --compilers coffee:coffee-script/register --ui exports ./tests"
+    "test": "./node_modules/.bin/mocha --recursive --no-timeouts --ui exports ./tests"
   },
   "author": {
     "name": "Stephen Handley",
