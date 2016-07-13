@@ -132,7 +132,7 @@ Context.run([
   /* ... */
 ]).done(function (error, data) {
   // error is context.error
-  // data is context.data
+  // data is context.data aka context()
 });
 ```
 
