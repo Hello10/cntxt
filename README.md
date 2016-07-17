@@ -12,7 +12,7 @@ cntxt provides a context for executing and accumulating data through a function 
 
 ## Latest Version
 
-4.0.1
+4.0.2
 
 ## Installation
 ```

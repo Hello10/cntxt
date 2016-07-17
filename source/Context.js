@@ -20,6 +20,7 @@ var Context = function (args) {
   context.error = null;
   context.data = {};
   context.state = STATES.ready;
+  context.STATES = STATES;
 
   var args = args || {};
   var overwrite = ('overwrite' in args) ? args.overwrite : true;
