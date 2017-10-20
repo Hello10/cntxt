@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/stephenhandley/cntxt.png)](https://travis-ci.org/stephenhandley/cntxt)
 [![NPM version](https://badge.fury.io/js/cntxt.png)](https://www.npmjs.com/package/cntxt)
 
-Cntxt provides a context for executing and accumulating data through a function pipeline.
+Context for executing and accumulating data through a function pipeline.
 
 ## Index
 * [Latest Version](#latest-version)
@@ -28,25 +28,38 @@ A context instance can be created via its constructor and then run by passing an
 let context = new Context({
   overwrite: false,
   data: {
-    wow: 10
+    wow: 9
   }
 });
 
+function a (context) {
+  context.next({hello: 10});
+}
+
+function b (context) {
+  context.next({barf: 11});
+}
+
+function c (context) {
+  context.next({honk: 12});
+}
+
 context.run([
-  function (context) {
-    context.next({hello: 10});
-  }
+  a,
+  [b, c] // these steps will be run in parallel
 ]).then((context)=> {
   let {wow, hello} = context.data;
-  Assert.equal(wow, 10);
-  Assert.equal(hello, 10);
-}).catch((error)=> {
-  Assert.equal(error, null);
+  Assert.deepEqual(data, {
+    wow: 9,
+    hello: 10,
+    barf: 11,
+    honk: 12
+  });
 });
 ```
 
 ### Context.series, Context.parallel
-Minimal configuration helper factory methods for creating a series or parallel context.
+The shorthand method of using nested arrays above for parallel steps is limited to single level nesting so as to avoid readability issues. These factory methods can be used for building more complicated pipelines.
 ```js
 Context.series([
   stepA,
@@ -68,7 +81,7 @@ Context.series([
 ```
 
 ### Context.runSeries, Context.runParallel
-If configuration via the constructor isn't needed, the static `.runSeries` and `.runParallel` methods can be used directly to instantiate a context and run in series or parallel respectively. A completion callback can either be passed as an optional second argument.  It can either accept a single context argument, or node-style `(error, data)` arguments. If omitted, then a promise is returned.
+If configuration via the constructor isn't needed, the static `.runSeries` and `.runParallel` methods can be used directly to instantiate a context and run it in series or parallel respectively. A completion callback can be passed as an optional second argument.  It can either accept a single context argument, or node-style `(error, data)` arguments. If the callback is omitted, a promise is returned.
 ```js
 // A. callback: (context)
 Context.runSeries([
@@ -101,18 +114,16 @@ Context.runParallel([
 ]).then((context)=> {
   Assert.equal(context.data.hello, 10);
   Assert.equal(context.data.goodbye, 11);
-}).catch((error)=> {
-  Assert.equal(error, null);
 });
 ```
 
 ### Steps
-Individual pipeline steps should be one of the following
+Individual pipeline steps should be in one of the following forms
 ```
 // A. A function that accepts a single context argument which has a
 //    data attribute consisting of accumulated data from previous
-//    steps and is also used for flow control via the following
-//    methods: .next, .fail, .error, .succeed (see below)
+//    steps and also used for flow control via the following
+//    methods: .next, .fail, .error, .succeed
 function contextStep (context) {
   context.next({more: 'data'});
 }
@@ -137,58 +148,89 @@ The context object has four methods used for control flow
 #### `.next(data)`
 Called within a step in order to advance to the next step and add `data`, which should be an object, to the context's accumulated data.
 ```js
-function (context) {
-  context.next({more: 'data'});
-}
+Context.runSeries([
+  function (context) {
+    context.next({more: 'filling'});
+  }
+]).then((context)=> {
+  Assert.equal(context.data.more, 'filling');
+});
 ```
 
-Promises passed as data values to `context.next` will be set to their resolved value. If the promise rejects `context.error` will be called with that error. Please note, when using this shorthand, promises will be evaluated in parallel. 
+Promises passed as data values to `context.next` will be set to their resolved value. If the promise rejects `context.error` will be called with that error. Note that promises will be evaluated in parallel.
 ```js
-function (context) {
-  context.next({
-    more: 'data'
-    wow: new Promise((resolve, reject)=> {
-      resolve('extra');
-    })
+Context.runSeries([
+  function (context) {
+    context.next({
+      more: 'data'
+      wow: new Promise((resolve, reject)=> {
+        resolve('extra');
+      })
+    });
+  }
+]).then((context)=> {
+  Assert.deepEqual(context.data, {
+    more: 'filling',
+    wow: 'extra'
   });
-}
-// after this step runs, context.data.wow will be 'extra'
+});
 ```
 
 #### `.throw(error)`
-Called when the step encounters an unexpected error (for example, a database isn't reachable), and the pipeline should stop processing and throw `error`.
+Should be called when a step encounters an unexpected error (for example, a database isn't reachable), and the pipeline should stop processing in an errored state.
 ```js
-function (context) {
-  let error = new Error('OH NO!');
-  context.throw(error);
-}
+Context.runSeries([
+  function (context) {
+    let error = new Error('OH NO!');
+    context.throw(error);
+  }
+]).catch((error)=> {
+  Assert.equal(error.message, 'OH NO!');
+});
 ```
 
 #### `.succeed(data)`
-Called when a step wants to complete the pipeline successfully without running any subsequent steps. `data` will be added to the context's accumulated data.
+Should be called when a step wants to complete the context run successfully without running any other steps. `data` will be added to the context's accumulated data.
 ```js
-function (context) {
-  context.succeed({ok: 'done'});
-}
+Context.runSeries([
+  function (context) {
+    context.succeed({ok: 'done'});
+  },
+  function (context) {
+    context.next({not: 'run'});
+  }
+]).then((context)=> {
+  Assert.deepEqual(context.data, {
+    ok: 'done'
+  });
+});
 ```
 
 #### `.fail(failure)`
-Called when the step encounters an expected error (for example, a record isn't found or input validation fails), and the pipeline should stop processing, but instead of throwing, `failure` will be added to the accumulated data. The common use case is to return a user-facing error message.
+Should be called when a step encounters an expected error (for example, a record isn't found or input validation fails), and the pipeline should stop processing, but instead of ending in an error state, it will ended in failed state. The failure will be added to the context's data under the key `failure`. The common use case is to return a user-facing error message.
 ```js
-function (context) {
-  let error = new Error('Not Found!');
-  context.fail(error);
-}
+Context.runSeries([
+  function (context) {
+    let error = new Error('Not Found!');
+    context.fail(error);
+  },
+  function (context) {
+    context.next({not: 'run'});
+  }
+]).then((context)=> {
+  Assert.equal(context.error, null);
+  Assert.equal(context.data.failure.message, 'Not Found!');
+});
 ```
 
 ### `.wrap(key)`
-Helper that returns a node style callback with (error, data) args which calls `.error` or `.next` appropriately. If the optional key is specified, data passed to `.next` will be namespaced under `key`.
+Helper that returns a node style callback with `(error, data)` args which calls `.error` or `.next` appropriately. If the optional key is specified, data passed to `.next` will be namespaced under `key`.
 ```js
 function createMessage (context) {
-  // The following
+  // The following:
   Message.create(messages, context.wrap('messages'))
 
-  // is shorthand for
+  // is shorthand for this:
   Message.create(messages, function (error, data) {
     if (error) {
       context.throw(error);
@@ -213,7 +255,8 @@ function findUser(context) {
   User.find({id: user_id }, (error, user)=> {
     if (error) {
       // .throw is used for unexpected errors
-      return context.throw(error);
+      context.throw(error);
+      return;
     }
 
     if (!user) {
@@ -232,10 +275,9 @@ function findUser(context) {
 function findUserGames(context) {
   let {user_id} = context.data;
 
-  // games will evaluate to the result of the passed promise
-  let games_promise = Game.findAll({user_id});
+  // games will evaluate to the result of the findAll promise
   return context.next({
-    games: games_promise
+    games: Game.findAll({user_id})
   });
 }
 
@@ -269,14 +311,14 @@ function taunt(context) {
 
 var params = {user_id : 'derrrrp'};
 
-// .run runs pipeline and returns a promise
+// .runSeries runs pipeline and returns a promise
 // The pipeline is finished when
 // A) any step calls `.succeed`, `.throw`, or `.fail`,
 // B) any step throws unexpectedly
 // C) final step calls `.next` (equivalent to `.succeed`)
 Context.runSeries([
   params,
-  [findUser, findUserGames], // these will run in parallel
+  [findUser, findUserGames], // these will be run in parallel
   getOpponents,
   taunt
 ]).then((context)=> {
