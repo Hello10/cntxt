@@ -1,11 +1,11 @@
 {
   "name": "cntxt",
-  "version": "4.0.2",
+  "version": "5.0.0",
   "description": "Pipeline context",
   "license": "substanceware",
   "main": "index.js",
   "scripts": {
-    "test": "./node_modules/.bin/mocha --recursive --no-timeouts --ui exports ./tests"
+    "test": "$(npm bin)/mocha --ui bdd './source/**/*.test.js'"
   },
   "author": {
     "name": "Stephen Handley",
@@ -16,6 +16,6 @@
     "type-of-is": "3.4.0"
   },
   "devDependencies": {
-    "mocha": "2.3.2"
+    "mocha": "3.5.0"
   }
 }

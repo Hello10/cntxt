@@ -1,228 +1,295 @@
-var Type = require('type-of-is');
+const Type = require('type-of-is');
 
-var STATES = {
-  ready     : 'ready',
-  running   : 'running',
-  errored   : 'errored',
-  failed    : 'failed',
-  succeeded : 'succeeded'
-};
+const {
+  buildEnum,
+  capitalize
+} = require('./Utils');
 
-var Context = function (args) {
-  var context = function (path) {
-    try {
-      return getData(path);
-    } catch (error) {
-      context.throw(error);
+const States = buildEnum([
+  'ready',
+  'running',
+  'errored',
+  'failed',
+  'succeeded'
+]);
+
+const Modes = buildEnum([
+  'parallel',
+  'series'
+])
+
+// External facing class
+// Handles data gathering and completion handling
+class Context {
+  constructor ({
+    data = {},
+    steps = null,
+    overwrite = true,
+    mode = Modes.series
+  } = {}) {
+    this.data = data;
+    this.overwrite = overwrite;
+    this.mode = mode;
+    this.state = States.ready;
+    this.steps = steps;
+
+    // set during run
+    this.error = null;
+    this.callback = null;
+  }
+
+  static run (steps, callback = null) {
+    let context = new Context();
+    return context.run(steps, callback);
+  }
+
+  run (steps = null, callback = null) {
+    if (this.running()) {
+      throw new Error('Already running');
     }
-  };
 
-  context.error = null;
-  context.data = {};
-  context.state = STATES.ready;
-  context.STATES = STATES;
-
-  var args = args || {};
-  var overwrite = ('overwrite' in args) ? args.overwrite : true;
-
-  addData(args.data);
-
-  var finished = false;
-  var onDone;
-
-  // set by run
-  var callbacks;
-  var index;
-
-  function getData (path) {
-    if (!path) {
-      return context.data;
-    }
-
-    var parts = path.split('.');
-
-    var data = context.data;
-    parts.forEach(function (part) {
-      if (!data || !(part in data)) {
-        throw('[cntxt] data does not exist: ' + path + '(' + part + ')');
+    if (steps) {
+      if (!Type(steps, Array)) {
+        steps = [steps];
       }
-      data = data[part];
-    });
 
-    return data;
+      // TODO: make this recursive so its generic to n-level nesting
+      steps = steps.map((step)=> {
+        if (Type(step, Array)) {
+          step = new Context({
+            overwrite: this.overwrite,
+            mode: Modes.parallel,
+            steps: step
+          });
+        }
+        return step;
+      });
+
+      this.steps = steps;
+    }
+
+    this.callback = callback;
+    this.state = States.running;
+
+    let promise = undefined;
+    if (!callback) {
+      promise = new Promise((resolve, reject)=> {
+        this.callback = (context)=> {
+          if (context.errored()) {
+            reject(context.error);
+          }
+          else {
+            resolve(context);
+          }
+        };
+      });
+    }
+
+    this.start();
+
+    return promise;
   }
 
-  function hasData (path) {
-    try {
-      var data = getData(path);
-      return true;
-    } catch (error) {
-      return false;
+  start () {
+    if (this.mode === Modes.parallel) {
+      this.completed = 0;
+      for (let step of this.steps) {
+        this.processStep(step);
+      }
+    }
+    else {
+      this.index = 0;
+      this.next();
     }
   }
 
-  function addData (data) {
-    if (!data) {
-      return;
+  async next (data) {
+    if (data) {
+      let keys = Object.keys(data).filter((key)=> {
+        let value = data[key];
+        return !!value.then;
+      });
+
+      let promises = keys.map((key)=> {
+        return data[key];
+      });
+
+      try {
+        let values = await Promise.all(promises);
+        values.forEach((value, index)=> {
+          let key = keys[index];
+          data[key] = value;
+        });
+      } catch (error) {
+        this.throw(error);
+      }
+
+      this.addData(data);
     }
 
-    Object.keys(data).forEach(function (k) {
-      if (hasData(k) && !overwrite) {
-        context.throw('[cntxt] Key exists ' + k);
+    if (this.mode === Modes.parallel) {
+      this.completed++;
+
+      if (this.completed === this.steps.length) {
+        this.succeed();
+      }
+    }
+    else {
+      if (this.index >= this.steps.length) {
+        this.succeed();
         return;
       }
 
-      context.data[k] = data[k];
-    });
-  };
-
-  function finish (state) {
-    if (state) {
-      context.state = state;
-    }
-
-    if (Type(onDone, Function)) {
-      finished = true;
-
-      if (onDone.length === 2) {
-        // onDone is (error, data)
-        onDone(context.error, context.data);
-      } else {
-        // onDone is (context)
-        onDone(context);
-      }
+      let step = this.steps[this.index];
+      this.index++;
+      this.processStep(step);
     }
   }
 
-  function makeError (error) {
-    if (Type(error, Error)) {
-      return error;
-    } else {
-      return new Error(error);
-    }
-  }
-
-  context.run = function (_callbacks) {
-    if (context.state === STATES.running) {
-      context.throw('[cntxt] Run called twice');
-      return;
-    }
-
-    callbacks = _callbacks;
-    context.state = STATES.running;
-
-    if (!Type(callbacks, Array)) {
-      callbacks = [callbacks];
-    }
-
-    if (callbacks.length === 0) {
-      context.throw('[cntxt] Run passed no callbacks');
-      return;
-    }
-
-    index = 0;
-    context.next();
-  };
-
-  context.wrap = function (key) {
-    return function (error, data) {
-      if (error) {
-        context.throw(error);
-      } else {
-        if (key) {
-          var next_data = {};
-          next_data[key] = data;
-          data = next_data;
-        }
-        context.next(data);
-      }
-    };
-  };
-
-  context.next = function (data) {
-    addData(data);
-
-    if (index >= callbacks.length) {
-      context.succeed();
-      return;
-    }
-
-    // call next callback
-    var callback = callbacks[index];
-    index++;
-
+  processStep (step) {
     try {
-      var type = Type(callback);
+      switch (Type(step)) {
+        case Context:
+          step.run()
+            .then((context)=> {
+              this.next(context.data);
+            })
+            .catch(this.throw.bind(this));
+          return;
 
-      switch (type) {
+        case Promise:
+          step
+            .then(this.next.bind(this))
+            .catch(this.throw.bind(this));
+          return;
+
         case Object:
-          //callback is data, not function
-          context.next(callback);
-          break;
+          // step is data, not function
+          this.next(step);
+          return;
 
         case Function:
-          if (callback.length === 2) {
-            // callback is (data, next)
-            callback(context.data, context.wrap());
-          } else {
-            // callback is (context)
-            callback(context);
+          if (step.length === 2) {
+            // set is callback with sig (data, next)
+            step(this.data, this.wrap());
           }
-          break;
+          else {
+            // set is callback with sig (context)
+            step(this);
+          }
+          return;
 
         default:
-          context.throw('Invalid callback type: ' + type);
+          this.throw(`Invalid pipeline type`);
       }
-    } catch (error) {
-      context.throw(error);
     }
-  };
-
-  context.done = function (_onDone) {
-    onDone = _onDone;
-
-    var done_state = context.errored() || context.failed() || context.succeeded();
-
-    if (!finished && done_state) {
-      finish();
+    catch (error) {
+      this.throw(error);
     }
-  };
+  }
 
-  context.has = hasData;
-
-  context.fail = function (error) {
-    addData({
-      error: makeError(error)
-    })
-    finish(STATES.failed);
-  };
-
-  context.throw = function (error) {
-    // for now just keep one error. TODO: something better
-    if (context.state !== STATES.errored) {
-      context.error = makeError(error);
-      finish(STATES.errored);
+  succeed (data) {
+    if (data) {
+      this.addData(data);
     }
-  };
+    this.finish(States.succeeded);
+  }
 
-  context.succeed = function (data) {
-    addData(data);
-    finish(STATES.succeeded);
-  };
+  fail (error) {
+    this.addData({
+      failure: this.makeError(error)
+    });
+    this.finish(States.failed);
+  }
 
-  Object.keys(STATES).forEach(function (state) {
-    context[state] = function () {
-      return (context.state === state);
+  throw (error) {
+    this.error = this.makeError(error);
+    this.finish(States.errored);
+  }
+
+  makeError (error) {
+    if (!Type(error, Error)) {
+      error = new Error(error);
+    }
+    return error;
+  }
+
+  wrap (key = null) {
+    return (error, data)=> {
+      if (error) {
+        this.throw(error);
+      }
+      else {
+        if (key) {
+          data = {
+            [key]: data
+          };
+        }
+        this.next(data);
+      }
     };
-  });
+  }
 
-  return context;
+  addData (data) {
+    for (let key in data) {
+      let val = data[key];
+      if (this.hasData(key) && !this.overwrite) {
+        this.throw(`Key already exists: ${key}`);
+        return;
+      }
+      else {
+        this.data[key] = val;
+      }
+    }
+  }
+
+  hasData (key) {
+    return (key in this.data);
+  }
+
+  finish (state) {
+    if (state) {
+      this.state = state;
+    }
+
+    if (this.callback.length === 2) {
+      // callback is (error, data)
+      this.callback(this.error, this.data);
+    }
+    else {
+      // callback is (context)
+      this.callback(this);
+    }
+  }
 }
 
-Context.run = function (callbacks) {
-  context = Context();
-  context.run(callbacks);
-  return context;
-};
+Context.States = States;
+for (let state in States) {
+  Context.prototype[state] = function () {
+    return (this.state === state);
+  };
+}
+
+Context.Modes = Modes;
+for (let mode in Modes) {
+  Context[mode] = function (...args) {
+    let first = args[0];
+    if (Type(first, Array)) {
+      args = {
+        steps: first
+      };
+    } else {
+      args = first;
+    }
+    args.mode = mode;
+    return new Context(args);
+  };
+
+  let run = `run${capitalize(mode)}`;
+  Context[run] = function (steps) {
+    let context = Context[mode](steps);
+    return context.run();
+  };
+}
 
 module.exports = Context;
