@@ -42,8 +42,8 @@ class Context {
   }
 
   run (steps = null, callback = null) {
-    if (this.running()) {
-      throw new Error('Already running');
+    if (!this.ready()) {
+      throw new Error('Already run');
     }
 
     if (steps) {
