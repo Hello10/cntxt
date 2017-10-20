@@ -224,14 +224,21 @@ describe('Context', function () {
           values: [c1, c2, c3],
           range: [3, 5]
         });
+
+        // d and e run in parallel, but individual
+        // steps are in series
+        Assert(d1 < d2);
         inRange({
           values: [d1, d2],
           range: [6, 9]
         });
+        
+        Assert(e1 < e2);
         inRange({
           values: [e1, e2],
           range: [6, 9]
         });
+
         Assert.equal(f, 10);
         done();
       });

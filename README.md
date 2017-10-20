@@ -364,4 +364,4 @@ Context.runSeries([
 });
 ```
 
-[This test](https://github.com/stephenhandley/cntxt/blob/master/tests/ContextTest.js) also has some more usage examples.
+[This test](https://github.com/stephenhandley/cntxt/blob/master/tests/Context.test.js) also has some more usage examples.
