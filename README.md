@@ -119,7 +119,7 @@ Context.runParallel([
 
 ### Steps
 Individual pipeline steps should be in one of the following forms
-```
+```js
 // A. A function that accepts a single context argument which has a
 //    data attribute consisting of accumulated data from previous
 //    steps and also used for flow control via the following
