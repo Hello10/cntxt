@@ -18,8 +18,6 @@ const Modes = buildEnum([
   'series'
 ])
 
-// External facing class
-// Handles data gathering and completion handling
 class Context {
   constructor ({
     data = {},
@@ -120,7 +118,8 @@ class Context {
           let key = keys[index];
           data[key] = value;
         });
-      } catch (error) {
+      }
+      catch (error) {
         this.throw(error);
       }
 
@@ -235,7 +234,6 @@ class Context {
       let val = data[key];
       if (this.hasData(key) && !this.overwrite) {
         this.throw(`Key already exists: ${key}`);
-        return;
       }
       else {
         this.data[key] = val;
