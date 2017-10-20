@@ -262,7 +262,8 @@ function findUser(context) {
     if (!user) {
       // .fail is used for expected errors that are
       // passed to consumer via message
-      return context.fail(`User not found ${user_id}`);
+      context.fail(`User not found ${user_id}`);
+      return;
     }
 
     // .next is used to pass data and invoke the next
@@ -276,7 +277,7 @@ function findUserGames(context) {
   let {user_id} = context.data;
 
   // games will evaluate to the result of the findAll promise
-  return context.next({
+  context.next({
     games: Game.findAll({user_id})
   });
 }
