@@ -147,18 +147,19 @@ class Context {
 
   processStep (step) {
     try {
+      if (step.then && step.catch) {
+        step
+          .then(this.next.bind(this))
+          .catch(this.throw.bind(this));
+        return;
+      }
+
       switch (Type(step)) {
         case Context:
           step.run()
             .then((context)=> {
               this.next(context.data);
             })
-            .catch(this.throw.bind(this));
-          return;
-
-        case Promise:
-          step
-            .then(this.next.bind(this))
             .catch(this.throw.bind(this));
           return;
 
