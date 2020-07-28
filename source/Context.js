@@ -24,14 +24,16 @@ class Context {
   constructor ({
     data = {},
     steps = null,
+    mode = Mode.Series,
     overwrite = true,
-    mode = Mode.Series
+    resolve = false
   } = {}) {
     this.data = data;
-    this.overwrite = overwrite;
     this.mode = mode;
     this.state = State.Pending;
     this.steps = steps;
+    this.overwrite = overwrite;
+    this.resolve = resolve;
 
     // set during run
     this.error = null;
@@ -75,14 +77,17 @@ class Context {
     if (!callback) {
       promise = new Promise((resolve, reject)=> {
         this.callback = (context)=> {
-          if (context.errored()) {
+          if (!this.resolve && context.errored()) {
             reject(context.error);
-          }
-          else {
+          } else {
             resolve(context);
           }
         };
       });
+    }
+
+    if (!this.steps) {
+      throw new Error('No steps defined');
     }
 
     this.start();
@@ -92,12 +97,13 @@ class Context {
 
   start () {
     if (this.mode === Mode.Parallel) {
+      // Parallel
       this.completed = 0;
       for (let step of this.steps) {
         this.processStep(step);
       }
-    }
-    else {
+    } else {
+      // Serial
       this.index = 0;
       this.next();
     }
@@ -120,23 +126,24 @@ class Context {
           let key = keys[index];
           data[key] = value;
         });
-      }
-      catch (error) {
+      } catch (error) {
         this.throw(error);
       }
 
       this.addData(data);
     }
 
+    const num_steps = this.steps.length;
     if (this.mode === Mode.Parallel) {
+      // Parallel
       this.completed++;
 
-      if (this.completed === this.steps.length) {
+      if (this.completed >= num_steps) {
         this.succeed();
       }
-    }
-    else {
-      if (this.index >= this.steps.length) {
+    } else {
+      // Serial
+      if (this.index >= num_steps) {
         this.succeed();
         return;
       }
@@ -158,6 +165,7 @@ class Context {
 
       switch (Type(step)) {
         case Context:
+          // Handle a nested context (i.e. Parallel within series)
           step.run()
             .then((context)=> {
               this.next(context.data);
@@ -174,8 +182,7 @@ class Context {
           if (step.length === 2) {
             // set is callback with sig (data, next)
             step(this.data, this.wrap());
-          }
-          else {
+          } else {
             // set is callback with sig (context)
             step(this);
           }
@@ -184,8 +191,7 @@ class Context {
         default:
           this.throw(`Invalid pipeline type`);
       }
-    }
-    catch (error) {
+    } catch (error) {
       this.throw(error);
     }
   }
@@ -220,8 +226,7 @@ class Context {
     return (error, data)=> {
       if (error) {
         this.throw(error);
-      }
-      else {
+      } else {
         if (key) {
           data = {
             [key]: data
@@ -237,8 +242,7 @@ class Context {
       let val = data[key];
       if (this.hasData(key) && !this.overwrite) {
         this.throw(`Key already exists: ${key}`);
-      }
-      else {
+      } else {
         this.data[key] = val;
       }
     }
@@ -256,8 +260,7 @@ class Context {
     if (this.callback.length === 2) {
       // callback is (error, data)
       this.callback(this.error, this.data);
-    }
-    else {
+    } else {
       // callback is (context)
       this.callback(this);
     }

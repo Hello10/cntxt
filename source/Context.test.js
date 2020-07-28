@@ -375,15 +375,33 @@ describe('Context', function () {
       });
 
       it('should handle failure', function (done) {
+        const msg = 'oooof';
         let promise = new Promise((resolve, reject)=> {
-          let error = new Error('oooof');
+          let error = new Error(msg);
           reject(error);
         });
 
         Context.run([
           promise
         ]).catch((error)=> {
-          Assert.equal(error.message, 'oooof');
+          Assert.equal(error.message, msg);
+          done();
+        });
+      });
+
+      it('should handle forcing to always resolve', function (done) {
+        const msg = 'ressoooooooof'
+        let promise = new Promise((resolve, reject)=> {
+          let error = new Error(msg);
+          reject(error);
+        });
+
+        const context = new Context({resolve: true});
+        context.run([
+          promise
+        ]).then((context)=> {
+          Assert(context.errored());
+          Assert.equal(context.error.message, msg);
           done();
         });
       });
