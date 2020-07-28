@@ -4,7 +4,6 @@ const Assert = require('assert');
 const Mocha = require('mocha');
 
 const Context = require('./Context');
-const {capitalize} = require('./Utils');
 
 describe('Context', function () {
   describe('constructor', function () {
@@ -232,7 +231,7 @@ describe('Context', function () {
           values: [d1, d2],
           range: [6, 9]
         });
-        
+
         Assert(e1 < e2);
         inRange({
           values: [e1, e2],
@@ -255,9 +254,10 @@ describe('Context', function () {
       y: 11
     };
 
-    Object.keys(Context.Modes).forEach((mode)=> {
+    Object.keys(Context.Mode).forEach((mode)=> {
+      const mode_low = mode.toLowerCase();
       it(`.${mode} should create a context in ${mode} mode`, function (done) {
-        let context = Context[mode](steps);
+        let context = Context[mode_low](steps);
         Assert.equal(context.mode, mode);
         context.run().then((context)=> {
           Assert.deepEqual(context.data, data);
@@ -265,7 +265,7 @@ describe('Context', function () {
         });
       });
 
-      let run = `run${capitalize(mode)}`;
+      let run = `run${mode}`;
       it(`.${run} should create and run a context in ${mode} mode`, function (done) {
         Context[run](steps).then((context)=> {
           Assert.equal(context.mode, mode);

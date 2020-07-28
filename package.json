@@ -1,6 +1,6 @@
 {
   "name": "cntxt",
-  "version": "5.0.3",
+  "version": "5.1.0",
   "description": "Pipeline context",
   "license": "substanceware",
   "main": "index.js",
@@ -9,8 +9,8 @@
   },
   "author": {
     "name": "Stephen Handley",
-    "email": "stephen.handley@gmail.com",
-    "url": "http://person.sh"
+    "email": "stephen@hello10.com",
+    "url": "https://hello10.com"
   },
   "dependencies": {
     "type-of-is": "3.4.0"

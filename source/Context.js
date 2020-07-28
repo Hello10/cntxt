@@ -1,21 +1,23 @@
 const Type = require('type-of-is');
 
-const {
-  buildEnum,
-  capitalize
-} = require('./Utils');
+function buildEnum (types) {
+  return types.reduce((Types, type)=> {
+    Types[type] = type;
+    return Types;
+  }, {});
+}
 
-const States = buildEnum([
-  'ready',
-  'running',
-  'errored',
-  'failed',
-  'succeeded'
+const State = buildEnum([
+  'Pending',
+  'Running',
+  'Errored',
+  'Failed',
+  'Succeeded'
 ]);
 
-const Modes = buildEnum([
-  'parallel',
-  'series'
+const Mode = buildEnum([
+  'Parallel',
+  'Series'
 ])
 
 class Context {
@@ -23,12 +25,12 @@ class Context {
     data = {},
     steps = null,
     overwrite = true,
-    mode = Modes.series
+    mode = Mode.Series
   } = {}) {
     this.data = data;
     this.overwrite = overwrite;
     this.mode = mode;
-    this.state = States.ready;
+    this.state = State.Pending;
     this.steps = steps;
 
     // set during run
@@ -42,7 +44,7 @@ class Context {
   }
 
   run (steps = null, callback = null) {
-    if (!this.ready()) {
+    if (!this.pending()) {
       throw new Error('Already run');
     }
 
@@ -56,7 +58,7 @@ class Context {
         if (Type(step, Array)) {
           step = new Context({
             overwrite: this.overwrite,
-            mode: Modes.parallel,
+            mode: Mode.Parallel,
             steps: step
           });
         }
@@ -67,7 +69,7 @@ class Context {
     }
 
     this.callback = callback;
-    this.state = States.running;
+    this.state = State.Running;
 
     let promise = undefined;
     if (!callback) {
@@ -89,7 +91,7 @@ class Context {
   }
 
   start () {
-    if (this.mode === Modes.parallel) {
+    if (this.mode === Mode.Parallel) {
       this.completed = 0;
       for (let step of this.steps) {
         this.processStep(step);
@@ -126,7 +128,7 @@ class Context {
       this.addData(data);
     }
 
-    if (this.mode === Modes.parallel) {
+    if (this.mode === Mode.Parallel) {
       this.completed++;
 
       if (this.completed === this.steps.length) {
@@ -192,19 +194,19 @@ class Context {
     if (data) {
       this.addData(data);
     }
-    this.finish(States.succeeded);
+    this.finish(State.Succeeded);
   }
 
   fail (error) {
     this.addData({
       failure: this.makeError(error)
     });
-    this.finish(States.failed);
+    this.finish(State.Failed);
   }
 
   throw (error) {
     this.error = this.makeError(error);
-    this.finish(States.errored);
+    this.finish(State.Errored);
   }
 
   makeError (error) {
@@ -262,16 +264,17 @@ class Context {
   }
 }
 
-Context.States = States;
-for (let state in States) {
-  Context.prototype[state] = function () {
+Context.State = State;
+for (let state in State) {
+  Context.prototype[state.toLowerCase()] = function () {
     return (this.state === state);
   };
 }
 
-Context.Modes = Modes;
-for (let mode in Modes) {
-  Context[mode] = function (...args) {
+Context.Mode = Mode;
+for (let mode in Mode) {
+  const mode_low = mode.toLowerCase();
+  Context[mode_low] = function (...args) {
     let first = args[0];
     if (Type(first, Array)) {
       args = {
@@ -284,9 +287,9 @@ for (let mode in Modes) {
     return new Context(args);
   };
 
-  let run = `run${capitalize(mode)}`;
+  let run = `run${mode}`;
   Context[run] = function (steps) {
-    let context = Context[mode](steps);
+    let context = Context[mode_low](steps);
     return context.run();
   };
 }
