@@ -11,7 +11,7 @@ Context for executing and accumulating data through a function pipeline.
 * [Usage](#usage)
 * [Example](#example)
 
-## Latest Versions
+## Latest Version
 
 5.3.0
 
