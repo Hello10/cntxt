@@ -1,11 +1,16 @@
 {
   "name": "cntxt",
-  "version": "5.1.0",
+  "version": "5.2.0",
   "description": "Pipeline context",
-  "license": "substanceware",
+  "license": "MIT",
   "main": "index.js",
+  "repository": {
+    "type" : "git",
+    "url" : "  https://github.com/hello10/cntxt"
+  },
   "scripts": {
-    "test": "$(npm bin)/mocha --ui bdd './source/**/*.test.js'"
+    "test": "$(npm bin)/mocha --ui bdd './source/**/*.test.js'",
+    "clean": "rm -rf node_modules && rm -f yarn.lock"
   },
   "author": {
     "name": "Stephen Handley",
@@ -13,9 +18,13 @@
     "url": "https://hello10.com"
   },
   "dependencies": {
-    "type-of-is": "3.4.0"
+    "type-of-is": "3.5.1"
   },
   "devDependencies": {
-    "mocha": "3.5.0"
+    "mocha": "8.0.1"
+  },
+  "repository": {
+    "type" : "git",
+    "url" : "https://github.com/npm/cli.git"
   }
 }
