@@ -1,6 +1,6 @@
 # cntxt
 
-[![Build Status](https://travis-ci.org/stephenhandley/cntxt.png)](https://travis-ci.org/stephenhandley/cntxt)
+[![Build Status](https://api.travis-ci.org/Hello10/cntxt.svg)](https://travis-ci.org/github/hello10/cntxt)
 [![NPM version](https://badge.fury.io/js/cntxt.png)](https://www.npmjs.com/package/cntxt)
 
 Context for executing and accumulating data through a function pipeline.
@@ -13,11 +13,15 @@ Context for executing and accumulating data through a function pipeline.
 
 ## Latest Versions
 
-5.0.3
+5.1.0
 
 ## Installation
 ```
 npm install --save cntxt
+```
+
+```
+yarn add --exact cntxt
 ```
 
 ## Usage
