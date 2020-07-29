@@ -13,7 +13,7 @@ Context for executing and accumulating data through a function pipeline.
 
 ## Latest Version
 
-5.3.0
+5.4.0
 
 ## Installation
 ```
@@ -37,11 +37,13 @@ let context = new Context({
 });
 
 function a (context) {
+  // can call context.next explicitly
   context.next({hello: 10});
 }
 
 function b (context) {
-  context.next({barf: 11});
+  // or implicity by return defined value
+  return {barf: 11};
 }
 
 function c (context) {
@@ -222,8 +224,9 @@ Context.runSeries([
     context.next({not: 'run'});
   }
 ]).then((context)=> {
+  Assert(context.failed());
   Assert.equal(context.error, null);
-  Assert.equal(context.data.failure.message, 'Not Found!');
+  Assert.equal(context.failure.message, 'Not Found!');
 });
 ```
 
@@ -273,7 +276,7 @@ function findUser(context) {
     // .next is used to pass data and invoke the next
     // function in pipeline. after this, the next step
     // will be called, and `data.user` will be `user`
-    context.next({user});
+    return {user};
   })
 }
 

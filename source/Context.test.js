@@ -439,7 +439,7 @@ describe('Context', function () {
     });
 
     describe('.next', function () {
-      it ('should add context data', function (done) {
+      it('should add context data', function (done) {
         function foo (context) {
           context.next({
             x: 10
@@ -455,7 +455,7 @@ describe('Context', function () {
         });
       });
 
-      it ('should handle resolving promises as values in data', function (done) {
+      it('should handle resolving promises as values in data', function (done) {
         function foo (context) {
           context.next({
             x: Promise.resolve(10)
@@ -471,7 +471,59 @@ describe('Context', function () {
         });
       });
 
-      it ('should handle rejecting promises as values in data', function (done) {
+      it('should handle auto next call', function (done) {
+        function foo10 (context) {
+          context.next({w: 10});
+        }
+
+        function foo20 (context) {
+          return {
+            x1: context.data.w + 10
+          };
+        }
+
+        async function foo25 (context) {
+          const x2 = new Promise((resolve, reject)=> {
+            setTimeout(()=> {
+              resolve(context.data.w + 15);
+            }, 50);
+          })
+          return {
+            x2: await x2
+          };
+        }
+
+        function foo30 (context) {
+          return Promise.resolve({
+            y: context.data.x2 + 5
+          });
+        }
+
+        async function foo40 (context) {
+          return {
+            z: context.data.y + 10
+          };
+        }
+
+        Context.run([
+          foo10,
+          [foo20, foo25],
+          foo30,
+          foo40
+        ]).then(function (context) {
+          Assert(context.succeeded());
+          Assert.deepEqual(context.data, {
+            w: 10,
+            x1: 20,
+            x2: 25,
+            y: 30,
+            z: 40
+          });
+          done();
+        });
+      });
+
+      it('should handle rejecting promises as values in data', function (done) {
         function foo (context) {
           context.next({
             x: Promise.reject(new Error('Ooops'))
@@ -553,7 +605,7 @@ describe('Context', function () {
       ]).then(function (context) {
         Assert(context.failed());
         Assert.equal(context.error, null);
-        Assert.equal(context.data.failure.message, 'I pity');
+        Assert.equal(context.failure.message, 'I pity');
         Assert(context.hasData('wow'));
         Assert(!context.hasData('honk'));
         done();

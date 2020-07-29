@@ -1,10 +1,16 @@
 const Type = require('type-of-is');
 
+const AsyncFunction = (async function af () {}).constructor;
+
 function buildEnum (types) {
   return types.reduce((Types, type)=> {
     Types[type] = type;
     return Types;
   }, {});
+}
+
+function isPromise (p) {
+  return (p.then && p.catch);
 }
 
 const State = buildEnum([
@@ -34,14 +40,16 @@ class Context {
     this.steps = steps;
     this.overwrite = overwrite;
     this.resolve = resolve;
+    this.nexts = 0;
 
     // set during run
     this.error = null;
+    this.failure = null;
     this.callback = null;
   }
 
   static run (steps, callback = null) {
-    let context = new Context();
+    const context = new Context();
     return context.run(steps, callback);
   }
 
@@ -59,6 +67,7 @@ class Context {
       steps = steps.map((step)=> {
         if (Type(step, Array)) {
           step = new Context({
+            data: this.data,
             overwrite: this.overwrite,
             mode: Mode.Parallel,
             steps: step
@@ -90,7 +99,7 @@ class Context {
       throw new Error('No steps defined');
     }
 
-    this.start();
+    this.start()
 
     return promise;
   }
@@ -99,7 +108,7 @@ class Context {
     if (this.mode === Mode.Parallel) {
       // Parallel
       this.completed = 0;
-      for (let step of this.steps) {
+      for (const step of this.steps) {
         this.processStep(step);
       }
     } else {
@@ -110,20 +119,22 @@ class Context {
   }
 
   async next (data) {
+    this.nexts++;
+
     if (data) {
-      let keys = Object.keys(data).filter((key)=> {
-        let value = data[key];
+      const keys = Object.keys(data).filter((key)=> {
+        const value = data[key];
         return !!value.then;
       });
 
-      let promises = keys.map((key)=> {
+      const promises = keys.map((key)=> {
         return data[key];
       });
 
       try {
-        let values = await Promise.all(promises);
+        const values = await Promise.all(promises);
         values.forEach((value, index)=> {
-          let key = keys[index];
+          const key = keys[index];
           data[key] = value;
         });
       } catch (error) {
@@ -148,7 +159,7 @@ class Context {
         return;
       }
 
-      let step = this.steps[this.index];
+      const step = this.steps[this.index];
       this.index++;
       this.processStep(step);
     }
@@ -156,7 +167,7 @@ class Context {
 
   processStep (step) {
     try {
-      if (step.then && step.catch) {
+      if (isPromise(step)) {
         step
           .then(this.next.bind(this))
           .catch(this.throw.bind(this));
@@ -178,13 +189,29 @@ class Context {
           this.next(step);
           return;
 
+        case AsyncFunction:
+          const run = async (fn)=> {
+            const result = await fn(this);
+            this.processStep(result);
+          }
+          run(step);
+          return;
+
         case Function:
           if (step.length === 2) {
             // set is callback with sig (data, next)
             step(this.data, this.wrap());
           } else {
             // set is callback with sig (context)
-            step(this);
+            const before = this.nexts;
+            const result = step(this);
+            const after = this.nexts;
+
+            // if next wasn't called and still running and return value
+            // is defined, then reprocess that as implicit call to next
+            if (this.running() && (before === after) && (result !== undefined)) {
+              this.processStep(result);
+            }
           }
           return;
 
@@ -204,9 +231,7 @@ class Context {
   }
 
   fail (error) {
-    this.addData({
-      failure: this.makeError(error)
-    });
+    this.failure = this.makeError(error);
     this.finish(State.Failed);
   }
 
@@ -238,8 +263,8 @@ class Context {
   }
 
   addData (data) {
-    for (let key in data) {
-      let val = data[key];
+    for (const key in data) {
+      const val = data[key];
       if (this.hasData(key) && !this.overwrite) {
         this.throw(`Key already exists: ${key}`);
       } else {
@@ -265,20 +290,28 @@ class Context {
       this.callback(this);
     }
   }
+
+  finished () {
+    return [
+      State.Succeeded,
+      State.Failed,
+      State.Errored
+    ].includes(this.state);
+  }
 }
 
 Context.State = State;
-for (let state in State) {
+for (const state in State) {
   Context.prototype[state.toLowerCase()] = function () {
     return (this.state === state);
   };
 }
 
 Context.Mode = Mode;
-for (let mode in Mode) {
+for (const mode in Mode) {
   const mode_low = mode.toLowerCase();
   Context[mode_low] = function (...args) {
-    let first = args[0];
+    const first = args[0];
     if (Type(first, Array)) {
       args = {
         steps: first
@@ -290,9 +323,9 @@ for (let mode in Mode) {
     return new Context(args);
   };
 
-  let run = `run${mode}`;
+  const run = `run${mode}`;
   Context[run] = function (steps) {
-    let context = Context[mode_low](steps);
+    const context = Context[mode_low](steps);
     return context.run();
   };
 }
