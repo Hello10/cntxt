@@ -169,14 +169,14 @@ class Context {
     try {
       if (isPromise(step)) {
         step
-          .then(this.next.bind(this))
+          .then(this.processStep.bind(this))
           .catch(this.throw.bind(this));
         return;
       }
 
       switch (Type(step)) {
         case Context:
-          // Handle a nested context (i.e. Parallel within series)
+          // Handle a nested context (i.e. Parallel within Series)
           step.run()
             .then((context)=> {
               this.next(context.data);
@@ -185,14 +185,18 @@ class Context {
           return;
 
         case Object:
-          // step is data, not function
+          // step is data, go to next step
           this.next(step);
           return;
 
         case AsyncFunction:
           const run = async (fn)=> {
-            const result = await fn(this);
-            this.processStep(result);
+            try {
+              const result = await fn(this);
+              this.processStep(result);
+            } catch (error) {
+              this.throw(error);
+            }
           }
           run(step);
           return;
@@ -201,17 +205,19 @@ class Context {
           if (step.length === 2) {
             // set is callback with sig (data, next)
             step(this.data, this.wrap());
-          } else {
+          } else if (step.length == 1) {
             // set is callback with sig (context)
             const before = this.nexts;
             const result = step(this);
             const after = this.nexts;
 
             // if next wasn't called and still running and return value
-            // is defined, then reprocess that as implicit call to next
+            // is defined, then process the return value;
             if (this.running() && (before === after) && (result !== undefined)) {
               this.processStep(result);
             }
+          } else {
+            this.throw(`Invalid pipeline step function: must have 1 or 2 args`);
           }
           return;
 

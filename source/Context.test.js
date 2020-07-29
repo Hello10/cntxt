@@ -359,6 +359,19 @@ describe('Context', function () {
       });
     });
 
+    describe('function with invalid signature', function () {
+      it('should error', function (done) {
+        Context.run([
+          function (x, y, z) {
+            return {x, y, z};
+          }
+        ]).catch(function (error) {
+          Assert(error.message.match(/Invalid pipeline step function/));
+          done();
+        });
+      });
+    });
+
     describe('promise', function () {
       it('should handle success', function (done) {
         let promise = new Promise((resolve, reject)=> {
@@ -483,13 +496,13 @@ describe('Context', function () {
         }
 
         async function foo25 (context) {
-          const x2 = new Promise((resolve, reject)=> {
+          const x2 = await (new Promise((resolve, reject)=> {
             setTimeout(()=> {
               resolve(context.data.w + 15);
             }, 50);
-          })
+          }));
           return {
-            x2: await x2
+            x2
           };
         }
 
@@ -519,6 +532,18 @@ describe('Context', function () {
             y: 30,
             z: 40
           });
+          done();
+        });
+      });
+
+      it('should handle reject in async function', function (done) {
+        const msg = 'omg wtf';
+        Context.run([
+          async ()=> {
+            throw new Error(msg);
+          }
+        ]).catch(function (error) {
+          Assert.equal(error.message, msg);
           done();
         });
       });

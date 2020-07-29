@@ -13,7 +13,7 @@ Context for executing and accumulating data through a function pipeline.
 
 ## Latest Version
 
-5.4.0
+5.5.0
 
 ## Installation
 ```
@@ -126,23 +126,36 @@ Context.runParallel([
 ### Steps
 Individual pipeline steps should be in one of the following forms
 ```js
-// A. A function that accepts a single context argument which has a
-//    data attribute consisting of accumulated data from previous
-//    steps and also used for flow control via the following
-//    methods: .next, .fail, .error, .succeed
+// A. A single argument function that takes a context argument.
+//    It has a data attribute consisting of accumulated data from
+//    previous steps and is also used for flow control via the
+//    following methods: .next, .fail, .error, .succeed
+//
+//    Instead of calling .next directly, steps may alternatively
+//    return an object which .next will be called with.
+
 function contextStep (context) {
   context.next({more: 'data'});
 }
 
-// B. A function that accepts data and callback as arguments. data holds the
-//    context's accumulated data and the callback is node style, and accepts
-//    two arguments: (error, data_to_add)
+function contextStepImplicitNext (context) {
+  return {more: 'data'};
+}
+
+async function asyncContextStep (context) {
+  const data = await somethingAsync();
+  return {more: data};
+}
+
+// B. A two argument Function that accepts data and callback as arguments.
+//    The data argument holds the context's accumulated data and the callback
+//    is node style, and accepts two arguments: (error, data)
 function callbackStep (data, callback) {
   callback(null, {more: 'data'});
 }
 
-// C. A promise. When the promise resolves, the resulting value should be an
-//    object with data to add to the context's accumulated data
+// C. A Promise. When the promise resolves, the resulting value should be an
+//    object with data to add to the context's accumulated data.
 let promiseStep = new Promise((reject, resolve)=> {
   resolve({more: 'data'});
 });
