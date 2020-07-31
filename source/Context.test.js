@@ -172,6 +172,14 @@ describe('Context', function () {
       });
     });
 
+    it('should error when a step is not defined', function () {
+      Assert.throws(()=> {
+        Context.run([
+          undefined
+        ]);
+      });
+    });
+
     it('should allow for combination of .series and .parallel', function (done) {
       let index = 0;
       function step (letter) {

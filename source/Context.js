@@ -10,7 +10,7 @@ function buildEnum (types) {
 }
 
 function isPromise (p) {
-  return (p.then && p.catch);
+  return (p && p.then && p.catch);
 }
 
 const State = buildEnum([
@@ -99,6 +99,13 @@ class Context {
       throw new Error('No steps defined');
     }
 
+    for (let i = 0; i < this.steps.length; i++) {
+      const step = this.steps[i];
+      if (!step) {
+        throw new Error(`Step #${i + 1} does not exist`);
+      }
+    }
+
     this.start()
 
     return promise;
@@ -166,6 +173,13 @@ class Context {
   }
 
   processStep (step) {
+    if (!step) {
+      // Since we reprocess the output of a function or promise step, need to
+      // check in case it didn't return anything, which could happen if they
+      // called context.next instead of returning
+      return;
+    }
+
     try {
       if (isPromise(step)) {
         step
@@ -174,7 +188,8 @@ class Context {
         return;
       }
 
-      switch (Type(step)) {
+      const type = Type(step);
+      switch (type) {
         case Context:
           // Handle a nested context (i.e. Parallel within Series)
           step.run()
@@ -222,7 +237,7 @@ class Context {
           return;
 
         default:
-          this.throw(`Invalid pipeline type`);
+          this.throw(`Invalid pipeline type ${type} for step: ${step}`);
       }
     } catch (error) {
       this.throw(error);
