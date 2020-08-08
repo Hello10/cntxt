@@ -460,34 +460,41 @@ describe('Context', function () {
     });
 
     describe('.next', function () {
-      it('should add context data', function (done) {
-        function foo (context) {
-          context.next({
-            x: 10
-          });
+      function xfoo (x) {
+        return function foo (context) {
+          context.next({x});
         }
+      }
 
+      it('should add context data', function (done) {
+        const x = 10;
         Context.run([
-          foo,
+          xfoo(x)
         ]).then(function (context) {
           Assert(context.succeeded());
-          Assert.equal(context.data.x, 10);
+          Assert.equal(context.data.x, x);
+          done();
+        });
+      });
+
+      it('should add context data even if falsy', function (done) {
+        const x = undefined;
+        Context.run([
+          xfoo(x),
+        ]).then(function (context) {
+          Assert(context.succeeded());
+          Assert.equal(context.data.x, x);
           done();
         });
       });
 
       it('should handle resolving promises as values in data', function (done) {
-        function foo (context) {
-          context.next({
-            x: Promise.resolve(10)
-          });
-        }
-
+        const x = 10;
         Context.run([
-          foo,
+          xfoo(Promise.resolve(x)),
         ]).then(function (context) {
           Assert(context.succeeded());
-          Assert.equal(context.data.x, 10);
+          Assert.equal(context.data.x, x);
           done();
         });
       });

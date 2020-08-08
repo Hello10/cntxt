@@ -13,7 +13,7 @@ Context for executing and accumulating data through a function pipeline.
 
 ## Latest Version
 
-5.5.1
+5.6.0
 
 ## Installation
 ```

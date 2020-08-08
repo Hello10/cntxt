@@ -129,19 +129,19 @@ class Context {
     this.nexts++;
 
     if (data) {
-      const keys = Object.keys(data).filter((key)=> {
-        const value = data[key];
-        return !!value.then;
-      });
-
-      const promises = keys.map((key)=> {
-        return data[key];
-      });
+      const promise_keys = [];
+      const promise_vals = [];
+      for (const [k, v] of Object.entries(data)) {
+        if (isPromise(v)) {
+          promise_keys.push(k);
+          promise_vals.push(v);
+        }
+      }
 
       try {
-        const values = await Promise.all(promises);
+        const values = await Promise.all(promise_vals);
         values.forEach((value, index)=> {
-          const key = keys[index];
+          const key = promise_keys[index];
           data[key] = value;
         });
       } catch (error) {
