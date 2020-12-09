@@ -173,6 +173,10 @@ class Context {
   }
 
   processStep (step) {
+    const stepThrow = (error)=> {
+      this.throw(error, step);
+    }
+
     if (!step) {
       // Since we reprocess the output of a function or promise step, need to
       // check in case it didn't return anything, which could happen if they
@@ -180,47 +184,54 @@ class Context {
       return;
     }
 
-    try {
-      if (isPromise(step)) {
-        step
-          .then(this.processStep.bind(this))
-          .catch(this.throw.bind(this));
+    if (isPromise(step)) {
+      step
+        .then(this.processStep.bind(this))
+        .catch(stepThrow);
+      return;
+    }
+
+    const type = Type(step);
+    switch (type) {
+      case Context:
+        // Handle a nested context (i.e. Parallel within Series)
+        step.run()
+          .then((context)=> {
+            this.next(context.data);
+          })
+          .catch(stepThrow);
         return;
-      }
 
-      const type = Type(step);
-      switch (type) {
-        case Context:
-          // Handle a nested context (i.e. Parallel within Series)
-          step.run()
-            .then((context)=> {
-              this.next(context.data);
-            })
-            .catch(this.throw.bind(this));
-          return;
+      case Object:
+        // step is data, go to next step
+        this.next(step);
+        return;
 
-        case Object:
-          // step is data, go to next step
-          this.next(step);
-          return;
-
-        case AsyncFunction:
-          const run = async (fn)=> {
-            try {
-              const result = await fn(this);
-              this.processStep(result);
-            } catch (error) {
-              this.throw(error);
-            }
+      case AsyncFunction:
+        const run = async (step)=> {
+          try {
+            const result = await step(this);
+            this.processStep(result);
+          } catch (error) {
+            stepThrow(error);
           }
-          run(step);
-          return;
+        }
+        run(step);
+        return;
 
-        case Function:
-          if (step.length === 2) {
+      case Function:
+        const {length} = step;
+        if ((length < 1) || (length > 2)) {
+          const error = new Error(`Invalid pipeline step function: must have 1 or 2 args`)
+          stepThrow(error);
+          return;
+        }
+
+        try {
+          if (length === 2) {
             // set is callback with sig (data, next)
             step(this.data, this.wrap());
-          } else if (step.length == 1) {
+          } else {
             // set is callback with sig (context)
             const before = this.nexts;
             const result = step(this);
@@ -231,16 +242,15 @@ class Context {
             if (this.running() && (before === after) && (result !== undefined)) {
               this.processStep(result);
             }
-          } else {
-            this.throw(`Invalid pipeline step function: must have 1 or 2 args`);
           }
-          return;
+        } catch (error) {
+          stepThrow(error);
+        }
+        return;
 
-        default:
-          this.throw(`Invalid pipeline type ${type} for step: ${step}`);
-      }
-    } catch (error) {
-      this.throw(error);
+      default:
+        const error = new Error(`Invalid pipeline type ${type} for step: ${step}`);
+        stepThrow(error);
     }
   }
 
@@ -251,21 +261,18 @@ class Context {
     this.finish(State.Succeeded);
   }
 
-  fail (error) {
-    this.failure = this.makeError(error);
+  fail (failure) {
+    this.failure = failure;
     this.finish(State.Failed);
   }
 
-  throw (error) {
-    this.error = this.makeError(error);
-    this.finish(State.Errored);
-  }
-
-  makeError (error) {
-    if (!Type(error, Error)) {
-      error = new Error(error);
+  throw (error, step = null) {
+    if (step) {
+      error.cntxt_step = step.name || step;
+      this.error_step = step;
     }
-    return error;
+    this.error = error;
+    this.finish(State.Errored);
   }
 
   wrap (key = null) {
@@ -287,7 +294,8 @@ class Context {
     for (const key in data) {
       const val = data[key];
       if (this.hasData(key) && !this.overwrite) {
-        this.throw(`Key already exists: ${key}`);
+        const error = new Error(`Key already exists: ${key}`);
+        this.throw(error);
       } else {
         this.data[key] = val;
       }

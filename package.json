@@ -1,6 +1,6 @@
 {
   "name": "cntxt",
-  "version": "5.6.0",
+  "version": "5.7.0",
   "description": "Pipeline context",
   "license": "MIT",
   "main": "index.js",
@@ -21,7 +21,7 @@
     "type-of-is": "3.5.1"
   },
   "devDependencies": {
-    "mocha": "8.0.1"
+    "mocha": "8.2.1"
   },
   "repository": {
     "type" : "git",

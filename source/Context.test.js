@@ -609,7 +609,7 @@ describe('Context', function () {
       });
     });
 
-    it('.error should set error and short circuit pipeline', function (done) {
+    it('.throw should set error and short circuit pipeline', function (done) {
       function err (context) {
         context.throw('OMG');
       }
@@ -617,7 +617,7 @@ describe('Context', function () {
       Context.run([
         err
       ]).catch((error)=> {
-        Assert.equal(error.message, 'OMG');
+        Assert.equal(error, 'OMG');
         done();
       });
     });
@@ -645,7 +645,7 @@ describe('Context', function () {
       ]).then(function (context) {
         Assert(context.failed());
         Assert.equal(context.error, null);
-        Assert.equal(context.failure.message, 'I pity');
+        Assert.equal(context.failure, 'I pity');
         Assert(context.hasData('wow'));
         Assert(!context.hasData('honk'));
         done();
